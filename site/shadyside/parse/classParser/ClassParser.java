@@ -7,13 +7,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import site.shadyside.attr.Attribute;
+import site.shadyside.attributes.Attribute;
+import site.shadyside.attributes.AttributePool;
 import site.shadyside.constantpool.ConstantPool;
 import site.shadyside.constantpool.ConstantPoolEntry;
 import site.shadyside.constantpool.ConstantPoolEntry.Type;
 import site.shadyside.exception.InvalidConstantPoolMemberException;
 import site.shadyside.exception.InvalidFileFormatException;
 import site.shadyside.exception.MemberNotContainedException;
+import site.shadyside.exception.attribute.AttributeNameNotFoundException;
 import site.shadyside.exception.fields.FieldDescriptorNotFoundException;
 import site.shadyside.exception.fields.FieldNameNotFoundException;
 import site.shadyside.exception.fields.FieldParsingException;
@@ -34,9 +36,13 @@ public class ClassParser {
 	private byte[] classData;
 	private int readingIndex;
 	private Path pathToClassFile;
+	
 	private ConstantPool constantPool;
 	private FieldPool fieldPool;
 	private MethodPool methodPool;
+	private AttributePool attributePool;
+	
+	
 	public ClassParser(Path pathToClassFile) throws IOException{
 		this.pathToClassFile = pathToClassFile;
 		classData = Files.readAllBytes(pathToClassFile);
@@ -96,7 +102,36 @@ public class ClassParser {
 			throw new InvalidFileFormatException(e);
 		}
 		logger.log("The methods are: \n" + methodPool.getMethods());
-		
+		try {
+			attributePool = getAttributePool();
+		} catch (AttributeNameNotFoundException e) {
+			throw new InvalidFileFormatException(e);
+		}
+	}
+
+	private AttributePool getAttributePool() throws AttributeNameNotFoundException {
+		int attributeCount = readInt();
+		AttributePool pool = new AttributePool();
+		for(int i = 0; i < attributeCount; i++){
+			int attrNameIndex = readInt();
+			String attrName = null;
+			try {
+				attrName = (String) constantPool.getEntryAtIndex(attrNameIndex).getValue();
+			} catch (MemberNotContainedException e) {
+				throw new AttributeNameNotFoundException(e);
+			}
+			byte[] intValue = new byte[4];
+			for(int k = 0; k < 4; k++){
+				intValue[k] = classData[readingIndex+k];
+			}
+			int attrLength = ByteBuffer.wrap(intValue).getInt();
+			readingIndex+=4;
+			System.out.println(attrName);
+			Attribute attribte = new Attribute(attrName,classData,readingIndex);
+			attribte.parseAttribute();
+			readingIndex+= attrLength;
+		}
+		return pool;
 	}
 
 	private MethodPool readMethods() throws MethodParsingException{
@@ -123,22 +158,13 @@ public class ClassParser {
 				throw new MethodDescriptorNotFoundException(e);
 			}
 			
-			int attributeCount = readInt();
-			List<Attribute> attributes = new ArrayList<Attribute>(attributeCount);
-			for(int j = 0; j < attributeCount; j++){
-				int attrNameIndex = readInt();
-				
-				byte[] intValue = new byte[4];
-				for(int k = 0; k < 4; k++){
-					intValue[k] = classData[readingIndex+k];
-				}
-				int attrLength = ByteBuffer.wrap(intValue).getInt();
-				readingIndex+=4;
-				
-				//TODO actually read attrs
-				readingIndex+= attrLength;
+			AttributePool attributePool = null;
+			try {
+				attributePool = getAttributePool();
+			} catch (AttributeNameNotFoundException e) {
+				throw new MethodParsingException(e);
 			}
-			Method method = new Method(flags,methodName,methodDescriptor,attributes);
+			Method method = new Method(flags,methodName,methodDescriptor,attributePool);
 			pool.addMethod(method);
 		}
 		return pool;
@@ -169,23 +195,14 @@ public class ClassParser {
 			} catch (MemberNotContainedException e) {
 				throw new FieldDescriptorNotFoundException(e);
 			}
-
-			int attributeCount = readInt();
-			List<Attribute> attributes = new ArrayList<Attribute>(attributeCount);
-			for(int j = 0; j < attributeCount; j++){
-				int attrNameIndex = readInt();
-				
-				byte[] intValue = new byte[4];
-				for(int k = 0; k < 4; k++){
-					intValue[k] = classData[readingIndex+k];
-				}
-				int attrLength = ByteBuffer.wrap(intValue).getInt();
-				readingIndex+=4;
-				
-				//TODO actually read attrs
-				readingIndex+= attrLength;
+			
+			AttributePool attributePool = null;
+			try {
+				attributePool = getAttributePool();
+			} catch (AttributeNameNotFoundException e) {
+				throw new FieldParsingException(e);
 			}
-			Field field = new Field(flags,fieldName,fieldDescriptor,attributes);
+			Field field = new Field(flags,fieldName,fieldDescriptor,attributePool);
 			pool.addField(field);
 		}
 		return pool;

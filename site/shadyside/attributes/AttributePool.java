@@ -1,11 +1,11 @@
-package site.shadyside.attr;
+package site.shadyside.attributes;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class AtrributePool {
+public class AttributePool {
 	private List<Attribute> attributes;
-	public AtrributePool() {
+	public AttributePool() {
 		this.attributes = new ArrayList<Attribute>();
 	}
 	

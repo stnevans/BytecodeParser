@@ -1,0 +1,1 @@
+This is a bytecode parser, intended to be able to take a .class file and displayt the bytecode along with the constant pool and other low level information about the file to a user.

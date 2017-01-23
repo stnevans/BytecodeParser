@@ -1,10 +1,9 @@
 package site.shadyside.exception.fields;
 
-import site.shadyside.exception.MemberNotContainedException;
 
 public class FieldParsingException extends Exception{
 
-	public FieldParsingException(MemberNotContainedException e) {
+	public FieldParsingException(Exception e) {
 		super(e);
 	}
 
